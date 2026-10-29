@@ -22,22 +22,34 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh '''
-                    mkdir -p "$WORKSPACE/deployment"
-                    cp index.html "$WORKSPACE/deployment/index.html"
+                powershell '''
+                    $deployDir = "$env:WORKSPACE\\deployment"
+
+                    New-Item -ItemType Directory -Path $deployDir -Force
+                    Copy-Item "$env:WORKSPACE\\index.html" "$deployDir\\index.html" -Force
+
+                    Write-Output "Deployment completed successfully."
                 '''
-                echo 'Deployment completed successfully.'
             }
         }
 
         stage('Verify') {
             steps {
-                sh '''
-                    test -s "$WORKSPACE/deployment/index.html"
-                    grep -q "Continuous Deployment with Jenkins" \
-                        "$WORKSPACE/deployment/index.html"
+                powershell '''
+                    $file = "$env:WORKSPACE\\deployment\\index.html"
+
+                    if (!(Test-Path $file)) {
+                        throw "Deployed index.html not found!"
+                    }
+
+                    $content = Get-Content $file -Raw
+
+                    if ($content -notmatch "Continuous Deployment with Jenkins") {
+                        throw "Deployed HTML content verification failed!"
+                    }
+
+                    Write-Output "Deployment verification successful."
                 '''
-                echo 'Deployment verification successful.'
             }
         }
     }
